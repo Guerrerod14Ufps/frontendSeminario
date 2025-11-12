@@ -1,0 +1,28 @@
+{
+  "name": "PlanificaU - Gestión de Tiempo Académico",
+  "short_name": "PlanificaU",
+  "description": "Aplicación para mejorar la gestión del tiempo académico de estudiantes universitarios",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "screenshots": []
+}
+
+
