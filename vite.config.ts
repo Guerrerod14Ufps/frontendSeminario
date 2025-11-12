@@ -4,6 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Base path para GitHub Pages (cambiar por el nombre de tu repositorio)
+  // Si el repositorio es 'usuario/planificau', el base sería '/planificau/'
+  // Para dominio personalizado o raíz, usar '/'
+  base: process.env.VITE_BASE_PATH || '/',
   plugins: [
     react(),
     VitePWA({

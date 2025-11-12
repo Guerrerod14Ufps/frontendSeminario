@@ -115,6 +115,52 @@ La aplicación está configurada como PWA y puede instalarse en dispositivos mó
 - Iconos adaptativos
 - Tema personalizado
 
+## 🚀 Despliegue en GitHub Pages
+
+### Configuración Automática (Recomendado)
+
+1. **Habilita GitHub Pages en tu repositorio**:
+   - Ve a `Settings` > `Pages` en tu repositorio de GitHub
+   - En `Source`, selecciona `GitHub Actions`
+
+2. **El workflow ya está configurado**:
+   - El archivo `.github/workflows/deploy.yml` se ejecutará automáticamente al hacer push a `main`
+   - El workflow detecta automáticamente el nombre de tu repositorio
+
+3. **Haz push de tus cambios**:
+   ```bash
+   git add .
+   git commit -m "Configurar despliegue en GitHub Pages"
+   git push origin main
+   ```
+
+4. **Espera a que se complete el workflow**:
+   - Ve a la pestaña `Actions` en tu repositorio
+   - El despliegue tomará unos minutos
+   - Una vez completado, tu app estará disponible en:
+     `https://[tu-usuario].github.io/[nombre-repositorio]/`
+
+### Configuración Manual
+
+Si prefieres desplegar manualmente:
+
+1. **Construye el proyecto con el base path correcto**:
+   ```bash
+   # Reemplaza 'frontendSeminario' con el nombre de tu repositorio
+   VITE_BASE_PATH=/frontendSeminario/ npm run build
+   ```
+
+2. **Habilita GitHub Pages**:
+   - Ve a `Settings` > `Pages`
+   - En `Source`, selecciona la rama `gh-pages` y carpeta `/root`
+   - O usa el script: `npm run build:gh-pages` y luego sube la carpeta `dist` a la rama `gh-pages`
+
+### Notas Importantes
+
+- **Base Path**: Si cambias el nombre del repositorio, actualiza la variable `VITE_BASE_PATH` en el workflow o en el script de build
+- **Rama principal**: El workflow está configurado para `main`. Si tu rama es `master`, actualiza `.github/workflows/deploy.yml`
+- **Dominio personalizado**: Si usas un dominio personalizado, cambia el `base` en `vite.config.ts` a `'/'`
+
 ## 🔮 Próximas Mejoras
 
 - [ ] Integración con backend (API REST o Firebase)

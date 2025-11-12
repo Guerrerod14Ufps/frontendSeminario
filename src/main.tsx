@@ -4,9 +4,12 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import './styles/tailwind.css';
 
+// Obtener el base path desde import.meta.env para GitHub Pages
+const basePath = import.meta.env.BASE_URL;
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={basePath}>
       <App />
     </BrowserRouter>
   </StrictMode>,
