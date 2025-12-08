@@ -4,7 +4,5 @@ export { Pomodoro } from './Pomodoro';
 export { Metricas } from './Metricas';
 export { Login } from './Login';
 export { AuthSuccess } from './AuthSuccess';
-export { Login } from './Login';
-export { AuthCallback } from './AuthCallback';
 
 
