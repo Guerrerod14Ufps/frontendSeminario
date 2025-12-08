@@ -7,31 +7,27 @@ interface ApiOptions extends RequestInit {
 }
 
 export const apiFetch = async <T>(path: string, options: ApiOptions = {}): Promise<T> => {
-  const { tokens, refreshAccessToken, logout } = useAuthStore.getState();
+  const { refreshAccessToken, logout } = useAuthStore.getState();
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   };
 
-  const buildRequest = (accessToken?: string) => ({
+  const buildRequest = () => ({
     ...options,
-    headers: {
-      ...headers,
-      ...(options.skipAuth
-        ? {}
-        : accessToken || tokens?.accessToken
-        ? { Authorization: `Bearer ${accessToken ?? tokens?.accessToken}` }
-        : {}),
-    },
+    headers,
+    credentials: 'include' as RequestCredentials, // Importante: incluir cookies HTTP-only
   });
 
   let response = await fetch(`${API_BASE_URL}${path}`, buildRequest());
 
-  if (response.status === 401 && tokens?.refreshToken && !options.skipAuth) {
+  // Si recibimos 401, intentar refrescar el token usando cookies
+  if (response.status === 401 && !options.skipAuth) {
     try {
-      const newAccessToken = await refreshAccessToken();
-      response = await fetch(`${API_BASE_URL}${path}`, buildRequest(newAccessToken));
+      await refreshAccessToken();
+      // Reintentar la petición original después del refresh
+      response = await fetch(`${API_BASE_URL}${path}`, buildRequest());
     } catch (error) {
       await logout();
       throw error;
@@ -51,7 +47,7 @@ export const apiFetch = async <T>(path: string, options: ApiOptions = {}): Promi
 const safeReadError = async (response: Response) => {
   try {
     const data = await response.json();
-    return (data as { message?: string })?.message;
+    return (data as { error?: string; message?: string })?.error || (data as { message?: string })?.message;
   } catch {
     return response.statusText;
   }

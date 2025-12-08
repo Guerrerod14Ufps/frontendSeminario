@@ -6,13 +6,16 @@ import { Button } from '../components/ui/Button';
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { loginWithGoogle, isLoading, error, isAuthenticated } = useAuthStore();
+  const { loginWithGoogle, checkAuth, isLoading, error, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
+    // Verificar autenticación al montar
+    checkAuth().then(() => {
+      if (isAuthenticated()) {
+        navigate('/', { replace: true });
+      }
+    });
+  }, [checkAuth, isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface px-4">

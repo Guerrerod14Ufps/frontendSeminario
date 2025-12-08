@@ -6,6 +6,21 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled';
 
+// Tipos del backend
+export type BackendTaskStatus = 'TODO' | 'DOING' | 'DONE';
+
+export interface BackendTask {
+  id: string;
+  title: string;
+  description?: string | null;
+  status?: BackendTaskStatus | null;
+  dueDate?: string | null; // ISO datetime string
+  userId: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+// Tipo del frontend (mantiene compatibilidad con la UI)
 export interface Task {
   id: string;
   title: string;

@@ -128,7 +128,8 @@ export const useAppStore = create<AppState>()(
         let updatedTask: Task | null = null;
 
         if (isAuthenticated) {
-          updatedTask = await taskApi.update(id, updates);
+          const currentTask = get().tasks.find((t) => t.id === id);
+          updatedTask = await taskApi.update(id, updates, currentTask);
         }
 
         set((state) => ({
