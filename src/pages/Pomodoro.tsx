@@ -85,11 +85,11 @@ export const Pomodoro = () => {
     }
   };
 
-  const handlePomodoroComplete = () => {
+  const handlePomodoroComplete = async () => {
     if (!currentPomodoro) return;
 
-    // Guardar sesión completada
-    addPomodoroSession({
+    // Guardar sesión completada (ahora es async para sincronizar con backend)
+    await addPomodoroSession({
       duration: getDurationForType(currentPomodoro.type),
       type: currentPomodoro.type,
     });

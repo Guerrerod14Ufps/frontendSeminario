@@ -15,6 +15,7 @@ import type {
   Notification,
 } from '../types';
 import { taskApi } from '../services/taskApi';
+import { statsApi } from '../services/statsApi';
 import { useAuthStore } from './useAuthStore';
 
 interface AppState {
@@ -35,15 +36,17 @@ interface AppState {
     sessionCount: number;
   } | null;
   pomodoroSettings: PomodoroSettings;
-  addPomodoroSession: (session: Omit<PomodoroSession, 'id' | 'completedAt'>) => void;
+  addPomodoroSession: (session: Omit<PomodoroSession, 'id' | 'completedAt'>) => Promise<void>;
   updatePomodoroSettings: (settings: Partial<PomodoroSettings>) => void;
   setCurrentPomodoro: (pomodoro: AppState['currentPomodoro']) => void;
 
   // Estadísticas
   dailyStats: DailyStats[];
   userStats: UserStats;
-  updateDailyStats: (date: string, updates: Partial<DailyStats>) => void;
-  updateUserStats: (updates: Partial<UserStats>) => void;
+  loadStats: () => Promise<void>;
+  loadDailyStats: () => Promise<void>;
+  updateDailyStats: (date: string, updates: Partial<DailyStats>) => Promise<void>;
+  updateUserStats: (updates: Partial<UserStats>) => Promise<void>;
 
   // Notificaciones
   notifications: Notification[];
@@ -90,8 +93,38 @@ export const useAppStore = create<AppState>()(
         const isAuthenticated = useAuthStore.getState().isAuthenticated();
         if (!isAuthenticated) return;
 
-        const tasksFromApi = await taskApi.list();
-        set({ tasks: tasksFromApi });
+        try {
+          const tasksFromApi = await taskApi.list();
+          set({ tasks: tasksFromApi });
+        } catch (error) {
+          console.error('Error al cargar tareas:', error);
+        }
+      },
+
+      // Cargar estadísticas del usuario desde el backend
+      loadStats: async () => {
+        const isAuthenticated = useAuthStore.getState().isAuthenticated();
+        if (!isAuthenticated) return;
+
+        try {
+          const { stats } = await statsApi.getUserStats();
+          set({ userStats: stats });
+        } catch (error) {
+          console.error('Error al cargar estadísticas:', error);
+        }
+      },
+
+      // Cargar estadísticas diarias desde el backend
+      loadDailyStats: async () => {
+        const isAuthenticated = useAuthStore.getState().isAuthenticated();
+        if (!isAuthenticated) return;
+
+        try {
+          const { dailyStats } = await statsApi.getDailyStats();
+          set({ dailyStats });
+        } catch (error) {
+          console.error('Error al cargar estadísticas diarias:', error);
+        }
       },
 
       // Acciones de tareas
@@ -158,27 +191,54 @@ export const useAppStore = create<AppState>()(
         const newStatus: TaskStatus =
           task.status === 'completed' ? 'pending' : 'completed';
 
+        // Verificar si la tarea ya había sido completada antes
+        const wasAlreadyCompleted = Boolean(task.completedAt);
+        const isNewlyCompleted = newStatus === 'completed' && !wasAlreadyCompleted;
+
         await get().updateTask(id, {
           status: newStatus,
           completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined,
         });
 
-        // Actualizar estadísticas si se completó
-        if (newStatus === 'completed') {
+        // Actualizar estadísticas solo si es la primera vez que se completa
+        if (isNewlyCompleted) {
           const today = new Date().toISOString().split('T')[0];
-          get().updateDailyStats(today, {
+          const isAuthenticated = useAuthStore.getState().isAuthenticated();
+          
+          // Actualizar estadísticas diarias
+          await get().updateDailyStats(today, {
             tasksCompleted:
               (get().dailyStats.find((s) => s.date === today)?.tasksCompleted || 0) + 1,
           });
-          get().updateUserStats({
-            totalTasksCompleted: get().userStats.totalTasksCompleted + 1,
-            experience: get().userStats.experience + 10,
-          });
+          
+          // Actualizar estadísticas del usuario
+          // Si está autenticado, usar el endpoint de increment para mejor rendimiento
+          if (isAuthenticated) {
+            try {
+              await statsApi.increment('tasksCompleted', 1);
+              await statsApi.increment('experience', 10);
+              // Recargar estadísticas actualizadas del backend
+              await get().loadStats();
+            } catch (error) {
+              console.error('Error incrementando estadísticas:', error);
+              // Fallback: actualizar localmente
+              await get().updateUserStats({
+                totalTasksCompleted: get().userStats.totalTasksCompleted + 1,
+                experience: get().userStats.experience + 10,
+              });
+            }
+          } else {
+            // Si no está autenticado, solo actualizar localmente
+            await get().updateUserStats({
+              totalTasksCompleted: get().userStats.totalTasksCompleted + 1,
+              experience: get().userStats.experience + 10,
+            });
+          }
         }
       },
 
       // Acciones de Pomodoro
-      addPomodoroSession: (sessionData) => {
+      addPomodoroSession: async (sessionData) => {
         const newSession: PomodoroSession = {
           ...sessionData,
           id: crypto.randomUUID(),
@@ -191,17 +251,42 @@ export const useAppStore = create<AppState>()(
         // Actualizar estadísticas
         const today = new Date().toISOString().split('T')[0];
         const duration = sessionData.duration;
-        get().updateDailyStats(today, {
+        const isAuthenticated = useAuthStore.getState().isAuthenticated();
+        
+        // Actualizar estadísticas diarias
+        await get().updateDailyStats(today, {
           pomodoroSessions:
             (get().dailyStats.find((s) => s.date === today)?.pomodoroSessions || 0) + 1,
           totalStudyTime:
             (get().dailyStats.find((s) => s.date === today)?.totalStudyTime || 0) + duration,
         });
-        get().updateUserStats({
-          totalPomodoroSessions: get().userStats.totalPomodoroSessions + 1,
-          totalStudyTime: get().userStats.totalStudyTime + duration,
-          experience: get().userStats.experience + 5,
-        });
+        
+        // Actualizar estadísticas del usuario
+        // Si está autenticado, usar el endpoint de increment para mejor rendimiento
+        if (isAuthenticated) {
+          try {
+            await statsApi.increment('pomodoroSessions', 1);
+            await statsApi.increment('studyTime', duration);
+            await statsApi.increment('experience', 5);
+            // Recargar estadísticas actualizadas del backend
+            await get().loadStats();
+          } catch (error) {
+            console.error('Error incrementando estadísticas:', error);
+            // Fallback: actualizar localmente
+            await get().updateUserStats({
+              totalPomodoroSessions: get().userStats.totalPomodoroSessions + 1,
+              totalStudyTime: get().userStats.totalStudyTime + duration,
+              experience: get().userStats.experience + 5,
+            });
+          }
+        } else {
+          // Si no está autenticado, solo actualizar localmente
+          await get().updateUserStats({
+            totalPomodoroSessions: get().userStats.totalPomodoroSessions + 1,
+            totalStudyTime: get().userStats.totalStudyTime + duration,
+            experience: get().userStats.experience + 5,
+          });
+        }
       },
 
       updatePomodoroSettings: (settings) => {
@@ -215,7 +300,10 @@ export const useAppStore = create<AppState>()(
       },
 
       // Acciones de estadísticas
-      updateDailyStats: (date, updates) => {
+      updateDailyStats: async (date, updates) => {
+        const isAuthenticated = useAuthStore.getState().isAuthenticated();
+        
+        // Actualizar localmente primero
         set((state) => {
           const existing = state.dailyStats.find((s) => s.date === date);
           if (existing) {
@@ -240,9 +328,28 @@ export const useAppStore = create<AppState>()(
             };
           }
         });
+
+        // Sincronizar con backend si está autenticado
+        if (isAuthenticated) {
+          try {
+            const { dailyStat } = await statsApi.updateDailyStats(date, updates);
+            // Actualizar con la respuesta del backend para asegurar consistencia
+            set((state) => ({
+              dailyStats: state.dailyStats.map((s) =>
+                s.date === date ? dailyStat : s
+              ),
+            }));
+          } catch (error) {
+            console.error('Error sincronizando estadísticas diarias:', error);
+            // Si falla, mantener los cambios locales
+          }
+        }
       },
 
-      updateUserStats: (updates) => {
+      updateUserStats: async (updates) => {
+        const isAuthenticated = useAuthStore.getState().isAuthenticated();
+        
+        // Actualizar localmente primero
         set((state) => {
           const newStats = { ...state.userStats, ...updates };
           // Calcular nivel basado en experiencia (100 XP por nivel)
@@ -256,6 +363,18 @@ export const useAppStore = create<AppState>()(
           }
           return { userStats: newStats };
         });
+
+        // Sincronizar con backend si está autenticado
+        if (isAuthenticated) {
+          try {
+            const { stats } = await statsApi.updateUserStats(updates);
+            // Actualizar con la respuesta del backend para asegurar consistencia
+            set({ userStats: stats });
+          } catch (error) {
+            console.error('Error sincronizando estadísticas:', error);
+            // Si falla, mantener los cambios locales
+          }
+        }
       },
 
       // Acciones de notificaciones

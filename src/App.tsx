@@ -14,14 +14,21 @@ const ProtectedRoutes = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoading = useAuthStore((state) => state.isLoading);
   const loadTasks = useAppStore((state) => state.loadTasks);
+  const loadStats = useAppStore((state) => state.loadStats);
+  const loadDailyStats = useAppStore((state) => state.loadDailyStats);
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
-    // Cargar tareas cuando el usuario esté autenticado
+    // Cargar datos cuando el usuario esté autenticado
     if (isAuthenticated()) {
-      loadTasks().catch(() => {});
+      // Cargar tareas y estadísticas en paralelo
+      Promise.all([
+        loadTasks().catch(() => {}),
+        loadStats().catch(() => {}),
+        loadDailyStats().catch(() => {}),
+      ]);
     }
-  }, [isAuthenticated, loadTasks, user]);
+  }, [isAuthenticated, loadTasks, loadStats, loadDailyStats, user]);
 
   // Mostrar loading mientras se verifica la autenticación
   if (isLoading) {
