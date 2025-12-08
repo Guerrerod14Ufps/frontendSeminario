@@ -3,20 +3,49 @@
  * Configura las rutas y el layout de la aplicación
  */
 
-import { Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Layout } from './components/layout';
-import { Dashboard, Planificador, Pomodoro, Metricas } from './pages';
+import { Dashboard, Planificador, Pomodoro, Metricas, Login, AuthCallback } from './pages';
+import { useAuthStore } from './store/useAuthStore';
+import { useAppStore } from './store/useAppStore';
+
+const ProtectedRoutes = () => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated());
+  const loadTasks = useAppStore((state) => state.loadTasks);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadTasks().catch(() => {});
+    }
+  }, [isAuthenticated, loadTasks]);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <Layout>
+      <Outlet />
+    </Layout>
+  );
+};
 
 function App() {
   return (
-    <Layout>
-      <Routes>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+
+      <Route element={<ProtectedRoutes />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/planificador" element={<Planificador />} />
         <Route path="/pomodoro" element={<Pomodoro />} />
         <Route path="/metricas" element={<Metricas />} />
-      </Routes>
-    </Layout>
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

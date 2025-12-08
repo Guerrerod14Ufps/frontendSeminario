@@ -17,6 +17,7 @@ import {
   ChartBarIcon as ChartBarIconSolid,
 } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const navigation = [
   { name: 'Inicio', href: '/', icon: HomeIcon, iconSolid: HomeIconSolid },
@@ -26,6 +27,8 @@ const navigation = [
 ];
 
 export const Sidebar = () => {
+  const { user, logout, isAuthenticated } = useAuthStore();
+
   return (
     <>
       {/* Desktop Sidebar */}
@@ -36,6 +39,20 @@ export const Sidebar = () => {
               PlanificaU
             </h1>
           </div>
+          {isAuthenticated() && user && (
+            <div className="px-6 pb-4">
+              <div className="rounded-lg border border-surface-muted bg-neutral-50 p-3">
+                <p className="text-sm font-semibold text-neutral-900">{user.name}</p>
+                <p className="text-xs text-neutral-500">{user.email}</p>
+                <button
+                  onClick={() => logout()}
+                  className="mt-2 text-xs text-primary-600 hover:text-primary-800 font-medium"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            </div>
+          )}
           <nav className="flex-1 px-3 space-y-1">
             {navigation.map((item) => (
               <NavLink

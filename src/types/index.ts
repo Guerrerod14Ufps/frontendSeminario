@@ -20,6 +20,19 @@ export interface Task {
   updatedAt: Date | string;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  createdAt?: string;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
 export interface PomodoroSession {
   id: string;
   duration: number; // en minutos (típicamente 25)

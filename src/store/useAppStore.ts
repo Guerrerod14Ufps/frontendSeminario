@@ -14,14 +14,17 @@ import type {
   UserStats,
   Notification,
 } from '../types';
+import { taskApi } from '../services/taskApi';
+import { useAuthStore } from './useAuthStore';
 
 interface AppState {
   // Tareas
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  toggleTaskStatus: (id: string) => void;
+  loadTasks: () => Promise<void>;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  toggleTaskStatus: (id: string) => Promise<void>;
 
   // Pomodoro
   pomodoroSessions: PomodoroSession[];
@@ -82,14 +85,35 @@ export const useAppStore = create<AppState>()(
       userStats: defaultUserStats,
       notifications: [],
 
+      // Sincronización con backend
+      loadTasks: async () => {
+        const isAuthenticated = useAuthStore.getState().isAuthenticated();
+        if (!isAuthenticated) return;
+
+        const tasksFromApi = await taskApi.list();
+        set({ tasks: tasksFromApi });
+      },
+
       // Acciones de tareas
-      addTask: (taskData) => {
-        const newTask: Task = {
-          ...taskData,
-          id: crypto.randomUUID(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+      addTask: async (taskData) => {
+        const isAuthenticated = useAuthStore.getState().isAuthenticated();
+        let newTask: Task;
+
+        if (isAuthenticated) {
+          newTask = await taskApi.create({
+            ...taskData,
+            createdAt: undefined,
+            updatedAt: undefined,
+          });
+        } else {
+          newTask = {
+            ...taskData,
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+
         set((state) => ({
           tasks: [...state.tasks, newTask],
         }));
@@ -101,30 +125,41 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      updateTask: (id, updates) => {
+      updateTask: async (id, updates) => {
+        const isAuthenticated = useAuthStore.getState().isAuthenticated();
+        let updatedTask: Task | null = null;
+
+        if (isAuthenticated) {
+          updatedTask = await taskApi.update(id, updates);
+        }
+
         set((state) => ({
           tasks: state.tasks.map((task) =>
             task.id === id
-              ? { ...task, ...updates, updatedAt: new Date().toISOString() }
+              ? updatedTask ?? { ...task, ...updates, updatedAt: new Date().toISOString() }
               : task
           ),
         }));
       },
 
-      deleteTask: (id) => {
+      deleteTask: async (id) => {
+        const isAuthenticated = useAuthStore.getState().isAuthenticated();
+        if (isAuthenticated) {
+          await taskApi.remove(id);
+        }
         set((state) => ({
           tasks: state.tasks.filter((task) => task.id !== id),
         }));
       },
 
-      toggleTaskStatus: (id) => {
+      toggleTaskStatus: async (id) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return;
 
         const newStatus: TaskStatus =
           task.status === 'completed' ? 'pending' : 'completed';
 
-        get().updateTask(id, {
+        await get().updateTask(id, {
           status: newStatus,
           completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined,
         });

@@ -25,6 +25,7 @@ export const Planificador = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -62,23 +63,27 @@ export const Planificador = () => {
     setEditingTask(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
-
-    if (editingTask) {
-      updateTask(editingTask.id, {
-        ...formData,
-        dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
-      });
-    } else {
-      addTask({
-        ...formData,
-        status: 'pending',
-        dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
-      });
+    setIsSaving(true);
+    try {
+      if (editingTask) {
+        await updateTask(editingTask.id, {
+          ...formData,
+          dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
+        });
+      } else {
+        await addTask({
+          ...formData,
+          status: 'pending',
+          dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
+        });
+      }
+      handleCloseModal();
+    } finally {
+      setIsSaving(false);
     }
-    handleCloseModal();
   };
 
   const filteredTasks = tasks.filter((task) => {
@@ -250,7 +255,11 @@ export const Planificador = () => {
               Cancelar
             </Button>
             <Button onClick={handleSubmit} type="submit">
-              {editingTask ? 'Guardar Cambios' : 'Crear Tarea'}
+              {isSaving
+                ? 'Guardando...'
+                : editingTask
+                ? 'Guardar Cambios'
+                : 'Crear Tarea'}
             </Button>
           </>
         }
