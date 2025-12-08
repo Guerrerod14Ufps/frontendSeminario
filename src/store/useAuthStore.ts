@@ -39,6 +39,10 @@ export const useAuthStore = create<AuthState>()(
         try {
           const res = await fetch(`${API_BASE_URL}/auth/me`, {
             credentials: 'include', // Importante: incluir cookies
+            mode: 'cors', // Asegurar modo CORS
+            headers: {
+              'Content-Type': 'application/json',
+            },
           });
 
           if (!res.ok) {
@@ -46,13 +50,16 @@ export const useAuthStore = create<AuthState>()(
               set({ user: null, isLoading: false });
               return;
             }
-            throw new Error('No se pudo verificar la autenticación');
+            const errorText = await res.text();
+            throw new Error(`Error ${res.status}: ${errorText || 'No se pudo verificar la autenticación'}`);
           }
 
           const data: MeResponse = await res.json();
           set({ user: data.user, isLoading: false });
         } catch (error: any) {
+          console.error('Error en checkAuth:', error);
           set({ error: error.message ?? 'Error al verificar autenticación', isLoading: false, user: null });
+          throw error; // Re-lanzar para que el componente pueda manejarlo
         }
       },
 

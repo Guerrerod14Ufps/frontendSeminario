@@ -18,6 +18,7 @@ export const apiFetch = async <T>(path: string, options: ApiOptions = {}): Promi
     ...options,
     headers,
     credentials: 'include' as RequestCredentials, // Importante: incluir cookies HTTP-only
+    mode: 'cors' as RequestMode, // Asegurar modo CORS
   });
 
   let response = await fetch(`${API_BASE_URL}${path}`, buildRequest());
@@ -28,6 +29,12 @@ export const apiFetch = async <T>(path: string, options: ApiOptions = {}): Promi
       await refreshAccessToken();
       // Reintentar la petición original después del refresh
       response = await fetch(`${API_BASE_URL}${path}`, buildRequest());
+      
+      // Si sigue siendo 401 después del refresh, hacer logout
+      if (response.status === 401) {
+        await logout();
+        throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+      }
     } catch (error) {
       await logout();
       throw error;
