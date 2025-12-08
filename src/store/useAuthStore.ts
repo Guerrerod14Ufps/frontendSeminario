@@ -83,9 +83,17 @@ export const useAuthStore = create<AuthState>()(
           });
 
           const result = await signInWithPopup(auth, provider);
-          const user = mapFirebaseUserToUser(result.user);
+          const mappedUser = mapFirebaseUserToUser(result.user);
           
-          set({ firebaseUser: result.user, user, isLoading: false });
+          // Actualizar el estado inmediatamente después del login exitoso
+          // El listener de onAuthStateChanged también se ejecutará, pero esto asegura
+          // que el estado se actualice de inmediato
+          set({ 
+            firebaseUser: result.user, 
+            user: mappedUser, 
+            isLoading: false,
+            error: undefined 
+          });
 
           // Opcional: Enviar token al backend para crear/actualizar usuario
           // Esta llamada es opcional y no bloquea el login si falla

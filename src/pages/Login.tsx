@@ -6,14 +6,15 @@ import { Button } from '../components/ui/Button';
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { loginWithGoogle, isLoading, error, isAuthenticated } = useAuthStore();
+  const { loginWithGoogle, isLoading, error, user, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     // Si ya está autenticado, redirigir al dashboard
-    if (isAuthenticated()) {
+    // Observamos 'user' directamente porque es reactivo
+    if (user && isAuthenticated()) {
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [user, isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface px-4">
