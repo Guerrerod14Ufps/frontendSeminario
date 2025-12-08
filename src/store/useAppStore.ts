@@ -102,8 +102,6 @@ export const useAppStore = create<AppState>()(
         if (isAuthenticated) {
           newTask = await taskApi.create({
             ...taskData,
-            createdAt: undefined,
-            updatedAt: undefined,
           });
         } else {
           newTask = {
