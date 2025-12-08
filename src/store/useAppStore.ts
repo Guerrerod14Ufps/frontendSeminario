@@ -163,7 +163,7 @@ export const useAppStore = create<AppState>()(
                 ...backendStat,
                 tasksCompleted: Math.max(backendStat.tasksCompleted, localStat.tasksCompleted),
                 pomodoroSessions: Math.max(backendStat.pomodoroSessions, localStat.pomodoroSessions),
-                studyTime: Math.max(backendStat.studyTime, localStat.studyTime),
+                totalStudyTime: Math.max(backendStat.totalStudyTime, localStat.totalStudyTime),
               };
             });
             
