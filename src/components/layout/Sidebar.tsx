@@ -98,40 +98,6 @@ export const Sidebar = () => {
           </div>
         </div>
       </aside>
-          <nav className="flex-1 px-3 space-y-1">
-            {navigation.map((item) => (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                end={item.href === '/'}
-                className={({ isActive }) =>
-                  clsx(
-                    'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors',
-                    isActive
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
-                  )
-                }
-              >
-                {({ isActive }) => {
-                  const Icon = isActive ? item.iconSolid : item.icon;
-                  return (
-                    <>
-                      <Icon
-                        className={clsx(
-                          'mr-3 h-5 w-5 flex-shrink-0',
-                          isActive ? 'text-primary-600' : 'text-neutral-400 group-hover:text-neutral-500'
-                        )}
-                      />
-                      {item.name}
-                    </>
-                  );
-                }}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-      </aside>
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-surface-muted z-40">
