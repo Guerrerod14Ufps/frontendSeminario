@@ -2,9 +2,11 @@
  * Configuración de Firebase
  */
 
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
+import type { FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getAnalytics, Analytics } from 'firebase/analytics';
+import { getAnalytics } from 'firebase/analytics';
+import type { Analytics } from 'firebase/analytics';
 
 // Configuración de Firebase
 const firebaseConfig = {

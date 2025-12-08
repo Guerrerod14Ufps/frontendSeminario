@@ -11,16 +11,17 @@ import { useAuthStore } from './store/useAuthStore';
 import { useAppStore } from './store/useAppStore';
 
 const ProtectedRoutes = () => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated());
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoading = useAuthStore((state) => state.isLoading);
   const loadTasks = useAppStore((state) => state.loadTasks);
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     // Cargar tareas cuando el usuario esté autenticado
     if (isAuthenticated()) {
       loadTasks().catch(() => {});
     }
-  }, [isAuthenticated, loadTasks]);
+  }, [isAuthenticated, loadTasks, user]);
 
   // Mostrar loading mientras se verifica la autenticación
   if (isLoading) {
