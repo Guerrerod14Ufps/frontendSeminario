@@ -1,35 +1,49 @@
 import { useAuthStore } from '../store/useAuthStore';
 
-const API_BASE_URL = 'https://planificauapi.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://planificauapi.onrender.com';
 
 interface ApiOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
 export const apiFetch = async <T>(path: string, options: ApiOptions = {}): Promise<T> => {
-  const { refreshAccessToken, logout } = useAuthStore.getState();
+  const { getAccessToken, logout } = useAuthStore.getState();
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {}),
+  const buildRequest = async () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> || {}),
+    };
+
+    // Agregar token de Firebase si no se omite la autenticación
+    if (!options.skipAuth) {
+      const token = await getAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    return {
+      ...options,
+      headers: headers as HeadersInit,
+      mode: 'cors' as RequestMode,
+    };
   };
 
-  const buildRequest = () => ({
-    ...options,
-    headers,
-    credentials: 'include' as RequestCredentials, // Importante: incluir cookies HTTP-only
-    mode: 'cors' as RequestMode, // Asegurar modo CORS
-  });
+  let requestOptions = await buildRequest();
+  let response = await fetch(`${API_BASE_URL}${path}`, requestOptions);
 
-  let response = await fetch(`${API_BASE_URL}${path}`, buildRequest());
-
-  // Si recibimos 401, intentar refrescar el token usando cookies
+  // Si recibimos 401, intentar refrescar el token
   if (response.status === 401 && !options.skipAuth) {
     try {
-      await refreshAccessToken();
-      // Reintentar la petición original después del refresh
-      response = await fetch(`${API_BASE_URL}${path}`, buildRequest());
-      
+      // Firebase maneja el refresh automáticamente, solo obtenemos un nuevo token
+      const newToken = await getAccessToken();
+      if (newToken) {
+        // Reintentar la petición original con el nuevo token
+        requestOptions = await buildRequest();
+        response = await fetch(`${API_BASE_URL}${path}`, requestOptions);
+      }
+
       // Si sigue siendo 401 después del refresh, hacer logout
       if (response.status === 401) {
         await logout();
