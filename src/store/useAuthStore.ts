@@ -76,6 +76,11 @@ export const useAuthStore = create<AuthState>()(
           const provider = new GoogleAuthProvider();
           provider.addScope('profile');
           provider.addScope('email');
+          
+          // Configurar el proveedor para usar el flujo de popup
+          provider.setCustomParameters({
+            prompt: 'select_account',
+          });
 
           const result = await signInWithPopup(auth, provider);
           const user = mapFirebaseUserToUser(result.user);
@@ -83,23 +88,46 @@ export const useAuthStore = create<AuthState>()(
           set({ firebaseUser: result.user, user, isLoading: false });
 
           // Opcional: Enviar token al backend para crear/actualizar usuario
+          // Esta llamada es opcional y no bloquea el login si falla
           try {
             const token = await getIdToken(result.user);
-            await fetch(`${API_BASE_URL}/auth/firebase`, {
+            const response = await fetch(`${API_BASE_URL}/auth/firebase`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({ idToken: token }),
             });
+            
+            // Solo loguear si hay error, pero no fallar el login
+            if (!response.ok) {
+              console.warn('Backend no disponible o endpoint no implementado:', response.status);
+            }
           } catch (backendError) {
-            // No fallar el login si el backend falla, solo loguear
-            console.warn('Error al sincronizar con backend:', backendError);
+            // No fallar el login si el backend falla o el endpoint no existe
+            // Esto es normal si el backend aún no tiene el endpoint implementado
+            console.warn('No se pudo sincronizar con backend (esto es opcional):', backendError);
           }
         } catch (error: any) {
           console.error('Error en login:', error);
+          
+          let errorMessage = 'Error al iniciar sesión con Google';
+          
+          // Manejar errores específicos de Firebase
+          if (error.code === 'auth/popup-closed-by-user') {
+            errorMessage = 'El popup fue cerrado. Por favor, intenta de nuevo.';
+          } else if (error.code === 'auth/popup-blocked') {
+            errorMessage = 'El popup fue bloqueado. Por favor, permite popups para este sitio.';
+          } else if (error.code === 'auth/configuration-not-found') {
+            errorMessage = 'Google Sign-In no está configurado. Por favor, habilítalo en Firebase Console.';
+          } else if (error.code === 'auth/unauthorized-domain') {
+            errorMessage = 'Este dominio no está autorizado. Contacta al administrador.';
+          } else if (error.message) {
+            errorMessage = error.message;
+          }
+          
           set({
-            error: error.message ?? 'Error al iniciar sesión con Google',
+            error: errorMessage,
             isLoading: false,
           });
           throw error;

@@ -19,12 +19,23 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-4NT064KG2X',
 };
 
+// Validar que la configuración esté completa
+if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
+  console.error('❌ Configuración de Firebase incompleta. Verifica tus variables de entorno.');
+}
+
 // Inicializar Firebase solo si no está ya inicializado
 let app: FirebaseApp;
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApps()[0];
+try {
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+    console.log('✅ Firebase inicializado correctamente');
+  } else {
+    app = getApps()[0];
+  }
+} catch (error) {
+  console.error('❌ Error al inicializar Firebase:', error);
+  throw error;
 }
 
 // Inicializar Auth
