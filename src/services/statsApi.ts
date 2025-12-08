@@ -1,8 +1,17 @@
 import { apiFetch } from '../lib/api';
 import type { UserStats, DailyStats } from '../types';
 
+// Tipo para la respuesta del backend (incluye campos adicionales)
+interface BackendUserStats extends UserStats {
+  id?: string;
+  userId?: string;
+  lastActivityDate?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface UserStatsResponse {
-  stats: UserStats;
+  stats: BackendUserStats;
 }
 
 interface DailyStatsResponse {

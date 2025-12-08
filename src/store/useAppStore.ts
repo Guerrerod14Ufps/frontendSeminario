@@ -102,28 +102,83 @@ export const useAppStore = create<AppState>()(
       },
 
       // Cargar estadísticas del usuario desde el backend
+      // Hace merge inteligente: mantiene los valores más altos entre local y backend
       loadStats: async () => {
         const isAuthenticated = useAuthStore.getState().isAuthenticated();
         if (!isAuthenticated) return;
 
         try {
           const { stats } = await statsApi.getUserStats();
-          set({ userStats: stats });
+          // Hacer merge: mantener el máximo de cada valor para no perder progreso local
+          // Mapear solo los campos relevantes de UserStats (ignorar id, userId, etc.)
+          set((state) => {
+            const backendStats: UserStats = {
+              totalTasksCompleted: stats.totalTasksCompleted,
+              totalPomodoroSessions: stats.totalPomodoroSessions,
+              totalStudyTime: stats.totalStudyTime,
+              currentStreak: stats.currentStreak,
+              longestStreak: stats.longestStreak,
+              badges: stats.badges || [],
+              level: stats.level,
+              experience: stats.experience,
+            };
+            
+            const mergedStats: UserStats = {
+              ...backendStats,
+              experience: Math.max(backendStats.experience, state.userStats.experience),
+              level: Math.max(backendStats.level, state.userStats.level),
+              totalTasksCompleted: Math.max(backendStats.totalTasksCompleted, state.userStats.totalTasksCompleted),
+              currentStreak: Math.max(backendStats.currentStreak, state.userStats.currentStreak),
+              longestStreak: Math.max(backendStats.longestStreak, state.userStats.longestStreak),
+              totalPomodoroSessions: Math.max(backendStats.totalPomodoroSessions, state.userStats.totalPomodoroSessions),
+              totalStudyTime: Math.max(backendStats.totalStudyTime, state.userStats.totalStudyTime),
+              // Mantener badges del backend si tiene más, o combinar ambos
+              badges: [...new Set([...backendStats.badges, ...state.userStats.badges])],
+            };
+            return { userStats: mergedStats };
+          });
         } catch (error) {
           console.error('Error al cargar estadísticas:', error);
+          // Si falla, mantener las estadísticas locales (ya están en localStorage)
         }
       },
 
       // Cargar estadísticas diarias desde el backend
+      // Hace merge inteligente: combina estadísticas diarias de local y backend
       loadDailyStats: async () => {
         const isAuthenticated = useAuthStore.getState().isAuthenticated();
         if (!isAuthenticated) return;
 
         try {
-          const { dailyStats } = await statsApi.getDailyStats();
-          set({ dailyStats });
+          const { dailyStats: backendStats } = await statsApi.getDailyStats();
+          // Hacer merge: combinar estadísticas diarias, manteniendo los máximos
+          set((state) => {
+            const localStatsMap = new Map(state.dailyStats.map(s => [s.date, s]));
+            const mergedStats = backendStats.map(backendStat => {
+              const localStat = localStatsMap.get(backendStat.date);
+              if (!localStat) return backendStat;
+              
+              // Mantener el máximo de cada valor
+              return {
+                ...backendStat,
+                tasksCompleted: Math.max(backendStat.tasksCompleted, localStat.tasksCompleted),
+                pomodoroSessions: Math.max(backendStat.pomodoroSessions, localStat.pomodoroSessions),
+                studyTime: Math.max(backendStat.studyTime, localStat.studyTime),
+              };
+            });
+            
+            // Agregar estadísticas locales que no están en el backend
+            localStatsMap.forEach((localStat, date) => {
+              if (!mergedStats.find(s => s.date === date)) {
+                mergedStats.push(localStat);
+              }
+            });
+            
+            return { dailyStats: mergedStats };
+          });
         } catch (error) {
           console.error('Error al cargar estadísticas diarias:', error);
+          // Si falla, mantener las estadísticas locales (ya están en localStorage)
         }
       },
 
@@ -368,8 +423,19 @@ export const useAppStore = create<AppState>()(
         if (isAuthenticated) {
           try {
             const { stats } = await statsApi.updateUserStats(updates);
+            // Mapear solo los campos relevantes de UserStats (ignorar id, userId, etc.)
+            const backendStats: UserStats = {
+              totalTasksCompleted: stats.totalTasksCompleted,
+              totalPomodoroSessions: stats.totalPomodoroSessions,
+              totalStudyTime: stats.totalStudyTime,
+              currentStreak: stats.currentStreak,
+              longestStreak: stats.longestStreak,
+              badges: stats.badges || [],
+              level: stats.level,
+              experience: stats.experience,
+            };
             // Actualizar con la respuesta del backend para asegurar consistencia
-            set({ userStats: stats });
+            set({ userStats: backendStats });
           } catch (error) {
             console.error('Error sincronizando estadísticas:', error);
             // Si falla, mantener los cambios locales
